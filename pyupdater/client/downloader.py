@@ -37,7 +37,6 @@ from pyupdater.utils.exceptions import FileDownloaderError
 
 log = logging.getLogger(__name__)
 
-
 def get_hash(data):
     """Get hash of object
 
@@ -147,8 +146,8 @@ class FileDownloader(object):
             _http = urllib3.PoolManager()
 
         if self.headers:
-            _headers = urllib3.util.make_headers(**self.headers)
-            _http.headers.update(_headers)
+            #_headers = urllib3.util.make_headers(**self.headers)
+            _http.headers.update(self.headers)
         log.debug(_http.headers)
         return _http
 
@@ -222,7 +221,6 @@ class FileDownloader(object):
 
     def _download_to_storage(self, check_hash=True):
         data = self._create_response()
-
         if data is None:
             return None
         hash_ = hashlib.sha256()
@@ -357,7 +355,7 @@ class FileDownloader(object):
             log.debug("Url for request: %s", file_url)
             try:
                 data = self.http_pool.urlopen(
-                    "GET", file_url, preload_content=False, retries=max_download_retries
+                    "GET", file_url, preload_content=False, decode_content=False, retries=max_download_retries
                 )
             except urllib3.exceptions.SSLError:
                 log.debug("SSL cert not verified")

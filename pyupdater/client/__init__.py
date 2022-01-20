@@ -29,6 +29,7 @@ import logging
 import os
 import tempfile
 import warnings
+import sys
 
 import appdirs
 from dsdev_utils.app import app_cwd, FROZEN
@@ -49,6 +50,7 @@ from pyupdater.client.updates import AppUpdate, get_highest_version, LibUpdate
 from pyupdater.utils.config import Config as _Config
 from pyupdater.utils.exceptions import ClientError
 
+from pyupdater.client.s3_header_maker import create_s3_header
 
 warnings.simplefilter("always", DeprecationWarning)
 
@@ -100,6 +102,8 @@ class Client(object):
         test = kwargs.get("test", False)
         data_dir = kwargs.get("data_dir")
         headers = kwargs.get("headers")
+        s3_params = kwargs.get("s3_params")
+
 
         # 3rd Party downloader
         self.downloader = kwargs.get("downloader")
@@ -122,6 +126,32 @@ class Client(object):
 
         # Boolean: Json being loaded to dict
         self.ready = False
+
+        #Boolean: States if client will connect to private s3 bucket
+        self.s3_private_connection = False
+
+        #checks if s3_params has been passed, and if so checks if all required values aer present
+        if s3_params is not None:
+            self.s3_private_connection = True
+            if not isinstance(s3_params, dict):
+                raise ClientError("s3_params argument must be a dict", expected=True)
+            all_keys_present = True
+            if 'host' not in s3_params:
+                all_keys_present = False
+            if 'region' not in s3_params:
+                all_keys_present = False
+            if 'endpoint' not in s3_params:
+                all_keys_present = False
+            if 'access_key' not in s3_params:
+                all_keys_present = False
+            if 'secret_key' not in s3_params:
+                all_keys_present = False
+            if 'bucket_name' not in s3_params:
+                all_keys_present = False
+            if all_keys_present==False:
+                raise ClientError("Not all required s3_parms are present in dict!"
+                " The following params are required: 'host', 'region', endpoint', "
+                "'access_key', 'secret_key', 'bucket_name'", expected=True)
 
         # LIst: Progress hooks to be called
         self.progress_hooks = []
@@ -204,6 +234,9 @@ class Client(object):
         # Creating data & update directories
         self._setup()
 
+        # headers
+        self.s3_params = s3_params
+
         if refresh is True:
             self.refresh()
 
@@ -256,6 +289,7 @@ class Client(object):
         self.name = name
 
         # Version object used for comparison
+
         version = _Version(version)
         self.version = str(version)
 
@@ -285,6 +319,7 @@ class Client(object):
         latest = get_highest_version(
             name, self.platform, channel, self.easy_data, strict
         )
+
         if latest is None:
             # If None is returned get_highest_version could
             # not find the supplied name in the version file
@@ -319,6 +354,7 @@ class Client(object):
             "progress_hooks": list(set(self.progress_hooks)),
             "urllib3_headers": self.urllib3_headers,
             "downloader": self.downloader,
+            "s3_params": self.s3_params,
         }
 
         data.update(self._gen_file_downloader_options())
@@ -432,6 +468,9 @@ class Client(object):
                 if self.downloader:
                     fd = downloader(vf, self.update_urls)
                 else:
+                    if self.s3_private_connection:
+                        s3_header = create_s3_header(self.s3_params, vf)
+                        self.urllib3_headers.update(s3_header)
                     fd = FileDownloader(
                         vf,
                         self.update_urls,
@@ -464,6 +503,10 @@ class Client(object):
             if self.downloader:
                 fd = self.downloader(self.key_file, self.update_urls)
             else:
+                if self.s3_private_connection:
+                    s3_header = create_s3_header(self.s3_params, self.key_file)
+
+                    self.urllib3_headers.update(s3_header)
                 fd = FileDownloader(
                     self.key_file,
                     self.update_urls,
@@ -497,6 +540,7 @@ class Client(object):
     # we try to load a cached version manifest from disk. Once we have
     # the data in memory we'll verify it's signature.
     def _get_update_manifest(self):
+
         log.debug("Loading version file...")
 
         data = self._get_manifest_from_http()
