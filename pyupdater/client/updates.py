@@ -428,6 +428,9 @@ class LibUpdate(object):
         #s3 params (optional)
         self.s3_params = data.get("s3_params")
 
+        #proxy_url (optional)
+        self.proxy_url = data.get("proxy_url")
+        
         # The amount of times to retry a url before giving up
         self.max_download_retries = data.get("max_download_retries")
 
@@ -690,6 +693,7 @@ class LibUpdate(object):
                     progress_hooks=self.progress_hooks,
                     max_download_retries=self.max_download_retries,
                     urllb3_headers=self.urllib3_headers,
+                    proxy_url = self.proxy_url
                 )
             result = fd.download_verify_write()
             if result:

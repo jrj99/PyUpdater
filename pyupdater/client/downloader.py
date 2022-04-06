@@ -132,18 +132,29 @@ class FileDownloader(object):
         # Extra headers
         self.headers = kwargs.get("urllb3_headers")
 
+        self.proxy_url = kwargs.get("proxy_url")
+
         if self.verify is True:
             self.http_pool = self._get_http_pool()
         else:
             self.http_pool = self._get_http_pool(secure=False)
 
+
     def _get_http_pool(self, secure=True):
-        if secure:
-            _http = urllib3.PoolManager(
-                cert_reqs=str("CERT_REQUIRED"), ca_certs=certifi.where()
-            )
+        if self.proxy_url == None:
+            if secure:
+                _http = urllib3.PoolManager(
+                    cert_reqs=str("CERT_REQUIRED"), ca_certs=certifi.where()
+                )
+            else:
+                _http = urllib3.PoolManager()
         else:
-            _http = urllib3.PoolManager()
+            if secure:
+                _http = urllib3.proxy_from_url(self.proxy_url,
+                    cert_reqs=str("CERT_REQUIRED"), ca_certs=certifi.where()
+                )
+            else:
+                _http = urllib3.proxy_from_url(self.proxy_url)
 
         if self.headers:
             #_headers = urllib3.util.make_headers(**self.headers)

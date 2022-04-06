@@ -103,6 +103,7 @@ class Client(object):
         data_dir = kwargs.get("data_dir")
         headers = kwargs.get("headers")
         s3_params = kwargs.get("s3_params")
+        proxy_url = kwargs.get("proxy_url")
 
 
         # 3rd Party downloader
@@ -237,6 +238,9 @@ class Client(object):
         # headers
         self.s3_params = s3_params
 
+        #proxy_url (optional)
+        self.proxy_url = proxy_url
+
         if refresh is True:
             self.refresh()
 
@@ -355,6 +359,7 @@ class Client(object):
             "urllib3_headers": self.urllib3_headers,
             "downloader": self.downloader,
             "s3_params": self.s3_params,
+            "proxy_url": self.proxy_url,
         }
 
         data.update(self._gen_file_downloader_options())
@@ -476,6 +481,7 @@ class Client(object):
                         self.update_urls,
                         verify=self.verify,
                         urllb3_headers=self.urllib3_headers,
+                        proxy_url = self.proxy_url,
                     )
                 data = fd.download_verify_return()
                 try:
@@ -512,6 +518,7 @@ class Client(object):
                     self.update_urls,
                     verify=self.verify,
                     urllb3_headers=self.urllib3_headers,
+                    proxy_url = self.proxy_url,
                 )
             data = fd.download_verify_return()
             try:
